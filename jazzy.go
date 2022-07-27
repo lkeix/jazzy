@@ -15,6 +15,7 @@ type (
 		DELETE(string, HandleFunc)
 		PATCH(string, HandleFunc)
 		OPTIONS(string, HandleFunc)
+		Serve(string)
 	}
 
 	Jazzy struct {
