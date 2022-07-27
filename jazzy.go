@@ -44,6 +44,17 @@ func (jazz *Jazzy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	jazz.pool.Put(ctx)
 }
 
+func (jazz *Jazzy) Serve(port string) {
+	if port[0] != ':' {
+		port = ":" + port
+	}
+	server := http.Server{
+		Handler: jazz,
+		Addr:    port,
+	}
+	server.ListenAndServe()
+}
+
 func (jazz *Jazzy) GET(path string, handler HandleFunc) {
 	jazz.Router.Insert(http.MethodGet, path, handler)
 }

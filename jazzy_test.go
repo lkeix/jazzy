@@ -8,3 +8,5 @@ func TestNew(t *testing.T) {
 		t.Errorf("jazzy.New return nil")
 	}
 }
+
+// TODO http method test
