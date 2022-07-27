@@ -22,17 +22,12 @@ type (
 		children    []*node
 	}
 
-	RouterRepo interface {
-		Insert(method string, path string, handler HandleFunc)
-		Search(method string, path string) HandleFunc
-	}
-
 	Router struct {
 		tree *node
 	}
 )
 
-func NewRouter() RouterRepo {
+func NewRouter() *Router {
 	return &Router{
 		tree: &node{
 			prefix:   "",
@@ -44,24 +39,24 @@ func NewRouter() RouterRepo {
 
 func (r *Router) Insert(method, path string, handler HandleFunc) {
 	// root insert
-	node := r.tree
+	n := r.tree
 	if len(path) == 0 {
 		path = "/"
 	}
 	if path[0] != '/' {
 		path = "/" + path
 	}
-	node.prefix = path
-	node.handlers = append(node.handlers, handler)
-	node.methods = append(node.methods, method)
+	n.prefix = path
+	n.handlers = append(n.handlers, handler)
+	n.methods = append(n.methods, method)
 }
 
 func (r *Router) Search(method, path string) HandleFunc {
 	// search root
-	node := r.tree
-	for i, m := range node.methods {
+	n := r.tree
+	for i, m := range n.methods {
 		if m == method {
-			return node.handlers[i]
+			return n.handlers[i]
 		}
 	}
 	return nil

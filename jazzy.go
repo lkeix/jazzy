@@ -20,7 +20,7 @@ type (
 
 	Jazzy struct {
 		pool   sync.Pool
-		Router Router
+		Router *Router
 	}
 )
 
@@ -33,7 +33,8 @@ func New() JazzyRepo {
 		},
 	}
 	return &Jazzy{
-		pool: pool,
+		pool:   pool,
+		Router: NewRouter(),
 	}
 }
 
