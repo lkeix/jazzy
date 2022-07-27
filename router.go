@@ -13,7 +13,7 @@ type (
 
 	node struct {
 		middlewares []HandleFunc
-		handler     HandleFunc
+		handlers    []HandleFunc
 		prefix      string
 		handleType  int
 		methods     []string
@@ -34,7 +34,11 @@ type (
 
 func NewRouter() RouterRepo {
 	return &Router{
-		tree: &node{},
+		tree: &node{
+			prefix:   "",
+			handlers: []HandleFunc{},
+			methods:  []string{},
+		},
 	}
 }
 
@@ -48,15 +52,17 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 		path = "/" + path
 	}
 	node.prefix = path
-	node.handler = handler
+	node.handlers = append(node.handlers, handler)
 	node.methods = append(node.methods, method)
 }
 
 func (r *Router) Search(method, path string) HandleFunc {
 	// search root
 	node := r.tree
-	if path == node.prefix {
-		return node.handler
+	for i, m := range node.methods {
+		if m == method {
+			return node.handlers[i]
+		}
 	}
 	return nil
 }
