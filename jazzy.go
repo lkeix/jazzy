@@ -42,7 +42,9 @@ func (jazz *Jazzy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := jazz.pool.Get().(*Context)
 	ctx.Init(r, w)
 	h := jazz.Router.Search(ctx.Request.Method, ctx.Request.URL.Path)
-	h(ctx)
+	if h != nil {
+		h(ctx)
+	}
 	jazz.pool.Put(ctx)
 }
 
