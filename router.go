@@ -104,8 +104,8 @@ func newNode(middlewares []HandleFunc, handler HandleFunc, prefix string, handle
 }
 
 func (r *Router) Search(method, path string) HandleFunc {
-	// search root
-	n := r.tree
+  // search root
+  n := r.tree
 	
   if len(path) == 0 {
 		path = "/"
