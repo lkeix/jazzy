@@ -64,7 +64,6 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 
     // if next node doesn't exist
     if len(n.children) == 0 || len(suffix) == l {
-      fmt.Println(suf(suffix, l))
       nn := newNode(
         []HandleFunc{},
         handler,
@@ -73,9 +72,11 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
         method,
         n,
       )
+      
       n.children = append(n.children, nn)
-      return
+      break
     }
+
     suffix = suffix[l:]
   }
 
@@ -105,22 +106,28 @@ func newNode(middlewares []HandleFunc, handler HandleFunc, prefix string, handle
 func (r *Router) Search(method, path string) HandleFunc {
 	// search root
 	n := r.tree
-	if len(path) == 0 {
+	
+  if len(path) == 0 {
 		path = "/"
 	}
-	if path[0] != '/' {
+	
+  if path[0] != '/' {
 		path = "/" + path
 	}
 
   suffix := path
+
   prev := ""
   now := ""
+  
   var _next *node
-  l := 0
+  var l int
+
   for {
     if _next != nil {
       n = _next
     }
+
     _next, l = lcpMinChildren(n, suffix) 
     
     now += n.prefix
@@ -131,10 +138,11 @@ func (r *Router) Search(method, path string) HandleFunc {
       i := handleindex(n, method)
       return n.handlers[i]
     }
+    
     if prev == prefix {
-      fmt.Println("search end")
       return nil
     }
+    
     prev = prefix
   }
 	return nil
