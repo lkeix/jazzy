@@ -9,6 +9,7 @@ import (
 const (
 	static = iota
 	pathParam
+  none
 
 	colon = ":"
 )
@@ -58,26 +59,61 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 	// add static route
 	suffix := path
 
+  var _n *node
 	for {
-		n, l := lcpMinChildren(n, suffix)
-		time.Sleep(time.Second * 1)
+    if _n != nil {
+      n = _n
+    }
+		n, l := lcpMinChild(n, suffix)
 
-		// if next node doesn't exist
-		if len(n.children) == 0 || len(suffix) == l {
+    time.Sleep(time.Second * 1)
+
+    // if next node doesn't exist
+		if len(suffix) == l {
 			nn := newNode(
 				[]HandleFunc{},
 				handler,
-				suf(suffix, l),
+				suffix,
 				handleType(path),
 				method,
 				n,
 			)
-
 			n.children = append(n.children, nn)
+      fmt.Printf("inserted %v after %v\n", nn, n)
 			break
 		}
 
+    // a node have children, suffix is left
+    if len(suffix) != l && suffix[:l] != "/" {
+      // create new node
+      nn := newNode(
+        []HandleFunc{},
+        nil,
+        suffix[:l],
+        none,
+        method,
+        n.parent,
+      )
+
+      pn := n.parent
+      ns := lcpMinChildren(pn.children, suffix[:l])
+
+      for i := 0; i < len(ns); i++ {
+        ns[i].prefix = ns[i].prefix[l:]
+        nn.children = append(nn.children, ns[i])
+        pn.children = remove(pn.children, ns[i])
+      }
+
+      pn.children = append(pn.children, nn)
+
+      fmt.Println(nn)
+      suffix = suffix[l:]
+      _n = nn
+      continue
+    }
+
 		suffix = suffix[l:]
+    _n = n
 	}
 
 	// if path is perfect match
@@ -128,7 +164,7 @@ func (r *Router) Search(method, path string) HandleFunc {
 			n = _next
 		}
 
-		_next, l = lcpMinChildren(n, suffix)
+		_next, l = lcpMinChild(n, suffix)
 
 		now += n.prefix
 		prefix := suffix[:l]
@@ -148,18 +184,38 @@ func (r *Router) Search(method, path string) HandleFunc {
 	return nil
 }
 
-func lcpMinChildren(n *node, suffix string) (*node, int) {
+func lcpMinChild(n *node, suffix string) (*node, int) {
 	mn := len(suffix)
 	next := n
 
-	for _, child := range n.children {
-		l := lcp(child.prefix, suffix)
-		if l <= mn {
+  for i := 0; i < len(n.children); i++ {
+		l := lcp(n.children[i].prefix, suffix)
+    if l <= mn && l != 0 {
 			mn = l
-			next = child
+			next = n.children[i]
 		}
 	}
 	return next, mn
+}
+
+func lcpMinChildren(ns []*node, suffix string) ([]*node) {
+  rns := make([]*node, 0, len(ns))
+  l := len(suffix)
+  for i := 0; i < len(ns); i++ {
+    if ns[i].prefix[:l] == suffix {
+      rns = append(rns, ns[i])
+    }
+  }
+  return rns
+}
+
+func remove(ns []*node, n*node) []*node {
+  for i := 0; i < len(ns); i++ {
+    if ns[i] == n {
+      return append(ns[:i], ns[i+1:]...)
+    }
+  }
+  return ns
 }
 
 func handleType(path string) int {
