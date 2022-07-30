@@ -3,7 +3,6 @@ package jazzy
 import (
 	"fmt"
 	"strings"
-	"time"
 )
 
 const (
@@ -66,8 +65,8 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
     }
 		n, l := lcpMinChild(n, suffix)
 
-    time.Sleep(time.Second * 1)
-
+    fmt.Println(l)
+    fmt.Println(len(suffix))
     // if next node doesn't exist
 		if len(suffix) == l {
 			nn := newNode(
@@ -80,11 +79,14 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 			)
 			n.children = append(n.children, nn)
       fmt.Printf("inserted %v after %v\n", nn, n)
+      if n.prefix == "t" {
+        fmt.Println(n.children[0].prefix)
+      }
 			break
 		}
 
-    // a node have children, suffix is left
-    if len(suffix) != l && suffix[:l] != "/" {
+    // a node have children, suffix is left, and don't exist intermediate node
+    if len(suffix) != l && suffix[:l] != "/" && n.prefix != suffix[:l] {
       // create new node
       nn := newNode(
         []HandleFunc{},
@@ -106,7 +108,6 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 
       pn.children = append(pn.children, nn)
 
-      fmt.Println(nn)
       suffix = suffix[l:]
       _n = nn
       continue
@@ -166,7 +167,7 @@ func (r *Router) Search(method, path string) HandleFunc {
 
 		_next, l = lcpMinChild(n, suffix)
 
-		now += n.prefix
+    now += n.prefix
 		prefix := suffix[:l]
 		suffix = suffix[l:]
 
