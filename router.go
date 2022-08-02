@@ -26,7 +26,7 @@ type (
 		prefix      string
 		handleType  int
 		methods     []string
-		params      []param
+		params      []*param
 		parent      *node
 		children    []*node
 	}
@@ -67,10 +67,56 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 		}
 		n, l := lcpMinChild(n, suffix)
 
+		if len(suffix) == 0 {
+			break
+		}
 		// path param
-		if len(suffix) == l && (suffix[0] == colon || suffix[min(1, len(suffix)-1)] == colon) {
-			fmt.Println("is path param")
-			fmt.Println(suffix[l:])
+		if suffix[0] == colon || suffix[min(1, len(suffix)-1)] == colon {
+			for i := 0; i < len(n.children); i++ {
+				if strings.Contains(n.children[i].prefix, ":") {
+					panic("path param handler is conflicted")
+				}
+			}
+
+			// if len(ns) > 0 {
+			//	panic("path param is conflicted")
+			// }
+
+			i := 1
+
+			for ; i < len(suffix); i++ {
+				if suffix[i] == '/' {
+					break
+				}
+			}
+
+			nn := newNode(
+				[]HandleFunc{},
+				nil,
+				":/",
+				pathParam,
+				method,
+				n,
+			)
+
+			nn.params = append(nn.params, &param{
+				key:   suffix[1:i],
+				value: "",
+			})
+
+			nn.handleType = pathParam
+			n.children = append(n.children, nn)
+
+			fmt.Printf("inserted %v after %v\n", nn, n)
+			if i == len(suffix) {
+				fmt.Println(suffix)
+				break
+			}
+
+			suffix = suffix[i:]
+			_n = nn
+
+			continue
 		}
 
 		/*
@@ -135,19 +181,6 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 
 					n = pn
 				}
-
-				/*
-				   l = lcp(suffix, n.prefix)
-				   if l != 0 {
-				     pn := n.parent
-				     n.prefix = n.prefix[l:]
-				     nn.parent = pn
-				     nn.children = append(nn.children, n)
-				     pn.children = remove(pn.children, n)
-				     fmt.Printf("switched %v after %v\n", n, nn)
-				     n = pn
-				   }
-				*/
 			}
 
 			fmt.Printf("now node: %v\n", n)
