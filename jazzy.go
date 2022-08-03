@@ -41,8 +41,9 @@ func New() JazzyRepo {
 func (jazz *Jazzy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	ctx := jazz.pool.Get().(*Context)
 	ctx.Init(r, w)
-	h := jazz.Router.Search(ctx.Request.Method, ctx.Request.URL.Path)
+	h, params := jazz.Router.Search(ctx.Request.Method, ctx.Request.URL.Path)
 	if h != nil {
+		ctx.params = params
 		h(ctx)
 	}
 	jazz.pool.Put(ctx)
