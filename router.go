@@ -78,10 +78,6 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				}
 			}
 
-			// if len(ns) > 0 {
-			//	panic("path param is conflicted")
-			// }
-
 			i := 1
 
 			for ; i < len(suffix); i++ {
@@ -104,7 +100,6 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				value: "",
 			})
 
-			nn.handleType = pathParam
 			n.children = append(n.children, nn)
 
 			fmt.Printf("inserted %v after %v\n", nn, n)
@@ -223,7 +218,7 @@ func newNode(middlewares []HandleFunc, handler HandleFunc, prefix string, handle
 	}
 }
 
-func (r *Router) Search(method, path string) HandleFunc {
+func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 	// search root
 	n := r.tree
 
@@ -235,26 +230,36 @@ func (r *Router) Search(method, path string) HandleFunc {
 		path = "/" + path
 	}
 
+	handler := staticRouting(n, path, method)
+
+	if handler != nil {
+		return handler, nil
+	}
+	return nil, nil
+}
+
+func staticRouting(n *node, path, method string) HandleFunc {
 	suffix := path
 
 	prev := ""
 	now := ""
 
-	var _next *node
+	var _n *node
 	var l int
 
 	for {
-		if _next != nil {
-			n = _next
+		if _n != nil {
+			n = _n
 		}
 
-		_next, l = lcpMinChild(n, suffix)
+		_n, l = lcpMinChild(n, suffix)
 
+		fmt.Println(n)
 		now += n.prefix
 		prefix := suffix[:l]
 		suffix = suffix[l:]
 
-		if now == path {
+		if now == path || now == path+"/" {
 			i := handleindex(n, method)
 			return n.handlers[i]
 		}
@@ -264,6 +269,15 @@ func (r *Router) Search(method, path string) HandleFunc {
 		}
 
 		prev = prefix
+	}
+	return nil
+}
+
+func paramChild(n []*node) *node {
+	for i := 0; i < len(n); i++ {
+		if n[i].handleType == pathParam {
+			return n[i]
+		}
 	}
 	return nil
 }
@@ -339,6 +353,13 @@ func lcp(x, y string) int {
 
 func min[T int | int32 | int64 | float32 | float64](x, y T) T {
 	if x < y {
+		return x
+	}
+	return y
+}
+
+func max[T int | int32 | int64 | float32 | float64](x, y T) T {
+	if x > y {
 		return x
 	}
 	return y
