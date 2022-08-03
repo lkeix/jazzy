@@ -1,6 +1,8 @@
 package jazzy
 
-import "net/http"
+import (
+	"net/http"
+)
 
 type (
 	Context struct {
