@@ -85,7 +85,6 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 					break
 				}
 			}
-
 			nn := newNode(
 				[]HandleFunc{},
 				nil,
@@ -95,8 +94,12 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				n,
 			)
 
+			if i == len(suffix) {
+				nn.handlers[0] = handler
+			}
+
 			nn.params = append(nn.params, &param{
-				key:   suffix[1:i],
+				key:   suffix[2:i],
 				value: "",
 			})
 
@@ -104,7 +107,6 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 
 			fmt.Printf("inserted %v after %v\n", nn, n)
 			if i == len(suffix) {
-				fmt.Println(suffix)
 				break
 			}
 
@@ -235,7 +237,8 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 	if handler != nil {
 		return handler, nil
 	}
-	return nil, nil
+
+	return paramRouting(n, path, method)
 }
 
 func staticRouting(n *node, path, method string) HandleFunc {
@@ -254,7 +257,6 @@ func staticRouting(n *node, path, method string) HandleFunc {
 
 		_n, l = lcpMinChild(n, suffix)
 
-		fmt.Println(n)
 		now += n.prefix
 		prefix := suffix[:l]
 		suffix = suffix[l:]
@@ -271,6 +273,61 @@ func staticRouting(n *node, path, method string) HandleFunc {
 		prev = prefix
 	}
 	return nil
+}
+
+func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
+
+	suffix := path
+	prev := ""
+	now := ""
+
+	var _n *node
+	var l int
+
+	for {
+		if _n != nil {
+			n = _n
+		}
+
+		child := paramChild(n.children)
+
+		if now == path {
+			i := handleindex(n, method)
+			fmt.Println(n.handlers[i])
+			return n.handlers[i], n.params
+		}
+
+		if child != nil {
+			i := l - 1
+			pp := ""
+			for ; i < len(suffix); i++ {
+				if suffix[i] != '/' {
+					pp += string(suffix[i])
+				}
+			}
+			_n = child
+			child.params[0].value = pp
+			now += pp
+			suffix = suffix[i:]
+			if len(child.children) == 0 {
+				_n = child
+			}
+			continue
+		}
+
+		n, l = lcpMinChild(n, suffix)
+		now += n.prefix
+		prefix := suffix[:l]
+		suffix = suffix[l:]
+
+		if prev == prefix {
+			return nil, nil
+		}
+
+		prev = prefix
+		_n = n
+	}
+	return nil, nil
 }
 
 func paramChild(n []*node) *node {
