@@ -26,9 +26,11 @@ type (
 		prefix      string
 		handleType  int
 		methods     []string
-		params      []*param
+		param       *param
+		path        string
 		parent      *node
 		children    []*node
+		leaf        bool
 	}
 
 	Router struct {
@@ -60,6 +62,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 	suffix := path
 	htype := handleType(path)
 
+	now := ""
 	var _n *node
 	for {
 		if _n != nil {
@@ -78,17 +81,34 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				}
 			}
 
+			// ci is colon start
+			cs := 0
+			// se is slash end
+			se := 0
+
 			i := 1
 
 			for ; i < len(suffix); i++ {
+				if suffix[i] == ':' && cs == 0 {
+					cs = i
+				}
+
 				if suffix[i] == '/' {
+					se = i
 					break
 				}
 			}
+
+			if se == 0 {
+				se = i
+			}
+
+			now += suffix[cs:se] + "/"
 			nn := newNode(
 				[]HandleFunc{},
 				nil,
-				":/",
+				suffix[cs:se]+"/",
+				now,
 				pathParam,
 				method,
 				n,
@@ -98,10 +118,10 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				nn.handlers[0] = handler
 			}
 
-			nn.params = append(nn.params, &param{
-				key:   suffix[2:i],
+			nn.param = &param{
+				key:   suffix[cs+1 : se],
 				value: "",
-			})
+			}
 
 			n.children = append(n.children, nn)
 
@@ -116,6 +136,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 			continue
 		}
 
+		now += suffix[:l]
 		/*
 		   fmt.Printf("now node: %v\n", n)
 		   fmt.Printf("len(suffix): %d\n", len(suffix))
@@ -129,6 +150,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				[]HandleFunc{},
 				nil,
 				suffix[:l],
+				now,
 				none,
 				method,
 				n.parent,
@@ -139,6 +161,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 
 			for i := 0; i < len(ns); i++ {
 				ns[i].prefix = ns[i].prefix[l:]
+				ns[i].path = ns[i].path
 				nn.children = append(nn.children, ns[i])
 				pn.children = remove(pn.children, ns[i])
 				fmt.Printf("switched %v after %v\n", n, nn)
@@ -157,6 +180,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				[]HandleFunc{},
 				handler,
 				suffixSlash(suffix[:l]),
+				now,
 				htype,
 				method,
 				n,
@@ -170,6 +194,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				if len(ns) != 0 && l != 0 {
 					for i := 0; i < len(ns); i++ {
 						ns[i].prefix = ns[i].prefix[l:]
+						ns[i].path = ns[i].path[:max(len(now)-l, 0)]
 						nn.parent = pn
 						nn.children = append(nn.children, ns[i])
 						pn.children = remove(pn.children, ns[i])
@@ -209,11 +234,20 @@ func suffixSlash(suffix string) string {
 	return suffix + "/"
 }
 
-func newNode(middlewares []HandleFunc, handler HandleFunc, prefix string, handleType int, method string, parent *node) *node {
+func newNode(
+	middlewares []HandleFunc,
+	handler HandleFunc,
+	prefix string,
+	path string,
+	handleType int,
+	method string,
+	parent *node,
+) *node {
 	return &node{
 		middlewares: middlewares,
 		handlers:    []HandleFunc{handler},
 		prefix:      prefix,
+		path:        path,
 		handleType:  handleType,
 		methods:     []string{method},
 		parent:      parent,
@@ -232,16 +266,48 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 		path = "/" + path
 	}
 
-	handler := staticRouting(n, path, method)
+	handler, n := staticRouting(n, path, method)
 
 	if handler != nil {
+		fmt.Println(handler)
 		return handler, nil
 	}
 
-	return paramRouting(n, path, method)
+	n = backtrack(n)
+
+	handler, params := paramRouting(n, path, method)
+
+	fmt.Println(handler)
+	fmt.Println(params)
+	/*
+		if handler != nil {
+			return handler, nil
+		}
+	*/
+
+	return handler, params
 }
 
-func staticRouting(n *node, path, method string) HandleFunc {
+func backtrack(n *node) *node {
+	var _n *node
+
+	for {
+		if n.parent == nil {
+			return n
+		}
+
+		child := paramChild(n.children)
+
+		if child != nil {
+			return n
+		}
+
+		_n = n.parent
+	}
+	return _n
+}
+
+func staticRouting(n *node, path, method string) (HandleFunc, *node) {
 	suffix := path
 
 	prev := ""
@@ -263,27 +329,31 @@ func staticRouting(n *node, path, method string) HandleFunc {
 
 		if now == path || now == path+"/" {
 			i := handleindex(n, method)
-			return n.handlers[i]
+			return n.handlers[i], nil
 		}
 
 		if prev == prefix {
-			return nil
+			return nil, n
 		}
 
 		prev = prefix
 	}
-	return nil
+	return nil, n
 }
 
 func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
-
-	suffix := path
+	l := lcp(n.path, path)
+	suffix := path[l:]
 	prev := ""
-	now := ""
+	now := n.path
+
+	if now != "/" {
+		now += "/"
+	}
 
 	var _n *node
-	var l int
 
+	params := make([]*param, 0)
 	for {
 		if _n != nil {
 			n = _n
@@ -291,23 +361,33 @@ func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
 
 		child := paramChild(n.children)
 
-		if now == path {
+		if now == path || now == path+"/" {
 			i := handleindex(n, method)
-			fmt.Println(n.handlers[i])
-			return n.handlers[i], n.params
+			return n.handlers[i], params
 		}
 
 		if child != nil {
-			i := l - 1
+			i := 0
 			pp := ""
-			for ; i < len(suffix); i++ {
-				if suffix[i] != '/' {
-					pp += string(suffix[i])
-				}
+
+			if suffix[0] == '/' {
+				i = 1
 			}
+
+			for ; i < len(suffix); i++ {
+				if suffix[i] == '/' {
+					break
+				}
+				pp += string(suffix[i])
+			}
+
 			_n = child
-			child.params[0].value = pp
-			now += pp
+			child.param.value = pp
+			params = append(params, child.param)
+
+			fmt.Println(pp)
+			now += pp + "/"
+
 			suffix = suffix[i:]
 			if len(child.children) == 0 {
 				_n = child
