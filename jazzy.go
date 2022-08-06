@@ -24,6 +24,10 @@ type (
 	}
 )
 
+const (
+	notfound = "{ \"message\": \"not found\" }"
+)
+
 func New() JazzyRepo {
 	pool := sync.Pool{
 		New: func() interface{} {
@@ -46,6 +50,11 @@ func (jazz *Jazzy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ctx.params = params
 		h(ctx)
 	}
+
+	if h == nil {
+		noRoute(ctx)
+	}
+
 	jazz.pool.Put(ctx)
 }
 
@@ -82,4 +91,8 @@ func (jazz *Jazzy) PATCH(path string, handler HandleFunc) {
 
 func (jazz *Jazzy) OPTIONS(path string, handler HandleFunc) {
 	jazz.Router.Insert(http.MethodOptions, path, handler)
+}
+
+func noRoute(ctx *Context) {
+	ctx.Writer.Write(([]byte)(notfound))
 }
