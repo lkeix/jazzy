@@ -494,7 +494,7 @@ func lcp(x, y string) int {
 	return min(len(x), len(y))
 }
 
-func min[T int | int32 | int64 | float32 | float64](x, y T) T {
+func min[T ~int | ~int32 | ~int64 | ~float32 | ~float64](x, y T) T {
 	if x < y {
 		return x
 	}

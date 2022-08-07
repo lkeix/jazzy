@@ -15,10 +15,12 @@ type (
 		DELETE(string, HandleFunc)
 		PATCH(string, HandleFunc)
 		OPTIONS(string, HandleFunc)
+		Group(string) *Jazzy
 		Serve(string)
 	}
 
 	Jazzy struct {
+		prefix string
 		pool   sync.Pool
 		Router *Router
 	}
@@ -70,27 +72,34 @@ func (jazz *Jazzy) Serve(port string) {
 }
 
 func (jazz *Jazzy) GET(path string, handler HandleFunc) {
-	jazz.Router.Insert(http.MethodGet, path, handler)
+	jazz.Router.Insert(http.MethodGet, jazz.prefix+path, handler)
 }
 
 func (jazz *Jazzy) POST(path string, handler HandleFunc) {
-	jazz.Router.Insert(http.MethodPost, path, handler)
+	jazz.Router.Insert(http.MethodPost, jazz.prefix+path, handler)
 }
 
 func (jazz *Jazzy) PUT(path string, handler HandleFunc) {
-	jazz.Router.Insert(http.MethodPut, path, handler)
+	jazz.Router.Insert(http.MethodPut, jazz.prefix+path, handler)
 }
 
 func (jazz *Jazzy) DELETE(path string, handler HandleFunc) {
-	jazz.Router.Insert(http.MethodDelete, path, handler)
+	jazz.Router.Insert(http.MethodDelete, jazz.prefix+path, handler)
 }
 
 func (jazz *Jazzy) PATCH(path string, handler HandleFunc) {
-	jazz.Router.Insert(http.MethodPatch, path, handler)
+	jazz.Router.Insert(http.MethodPatch, jazz.prefix+path, handler)
 }
 
 func (jazz *Jazzy) OPTIONS(path string, handler HandleFunc) {
-	jazz.Router.Insert(http.MethodOptions, path, handler)
+	jazz.Router.Insert(http.MethodOptions, jazz.prefix+path, handler)
+}
+
+func (jazz *Jazzy) Group(path string) *Jazzy {
+	jaz := new(Jazzy)
+	*jaz = *jazz
+	jaz.Router.Insert("GROUP", path, nil)
+	return jaz
 }
 
 func noRoute(ctx *Context) {
