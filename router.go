@@ -361,14 +361,17 @@ func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
 
 		child := paramChild(n.children)
 
-		if len(suffix) == 0 {
-			return nil, nil
-		}
-
 		if now == path || now == path+"/" {
 			i := handleindex(n, method)
 			return n.handlers[i], params
 		}
+
+		if len(suffix) == 0 {
+			return nil, nil
+		}
+
+		fmt.Println(path)
+		fmt.Println(now)
 
 		if child != nil {
 			i := 0
@@ -389,9 +392,10 @@ func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
 			child.param.value = pp
 			params = append(params, child.param)
 
-			fmt.Println(pp)
+			if len(now) == 0 {
+				now += "/"
+			}
 			now += pp + "/"
-
 			suffix = suffix[i:]
 			if len(child.children) == 0 {
 				_n = child
