@@ -58,166 +58,104 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 		path = "/" + path
 	}
 
-	// add static route
-	suffix := path
-	htype := handleType(path)
-
-	now := ""
 	var _n *node
+	var l int
+	suffix := path
+	now := ""
+
 	for {
+
 		if _n != nil {
 			n = _n
 		}
-		n, l := lcpMinChild(n, suffix)
 
-		if len(suffix) == 0 {
-			break
-		}
-		// path param
-		if suffix[0] == colon || suffix[min(1, len(suffix)-1)] == colon {
-			for i := 0; i < len(n.children); i++ {
-				if strings.Contains(n.children[i].prefix, ":") {
-					panic("path param handler is conflicted")
-				}
-			}
+		n, l = lcpMinChild(n, suffix)
 
-			// ci is colon start
-			cs := 0
-			// se is slash end
-			se := 0
-
-			i := 1
-
-			for ; i < len(suffix); i++ {
-				if suffix[i] == ':' && cs == 0 {
-					cs = i
-				}
-
-				if suffix[i] == '/' {
-					se = i
-					break
-				}
-			}
-
-			if se == 0 {
-				se = i
-			}
-
-			now += suffix[cs:se] + "/"
-			nn := newNode(
-				[]HandleFunc{},
-				nil,
-				suffix[cs:se]+"/",
-				now,
-				pathParam,
-				method,
-				n,
-			)
-
-			if i == len(suffix) {
-				nn.handlers[0] = handler
-			}
-
-			nn.param = &param{
-				key:   suffix[cs+1 : se],
-				value: "",
-			}
-
-			n.children = append(n.children, nn)
-
-			fmt.Printf("inserted %v after %v\n", nn, n)
-			if i == len(suffix) {
-				break
-			}
-
-			suffix = suffix[i:]
-			_n = nn
-
-			continue
-		}
-
-		now += suffix[:l]
-		/*
-		   fmt.Printf("now node: %v\n", n)
-		   fmt.Printf("len(suffix): %d\n", len(suffix))
-		   fmt.Printf("l: %d\n", l)
-		   fmt.Printf("suffix[:l]: %v\n", suffix[:l])
-		*/
-		// a node have children, suffix is left, and don't exist intermediate node
-		if len(suffix) != l && suffix[:l] != "/" && n.prefix != suffix[:l] {
-			// create intermediate node
-			nn := newNode(
-				[]HandleFunc{},
-				nil,
-				suffix[:l],
-				now,
-				none,
-				method,
-				n.parent,
-			)
-
-			pn := n.parent
-			ns := lcpMinChildren(pn.children, suffix[:l])
-
-			for i := 0; i < len(ns); i++ {
-				ns[i].prefix = ns[i].prefix[l:]
-				ns[i].path = ns[i].path
-				nn.children = append(nn.children, ns[i])
-				pn.children = remove(pn.children, ns[i])
-				fmt.Printf("switched %v after %v\n", n, nn)
-			}
-
-			pn.children = append(pn.children, nn)
-
-			suffix = suffix[l:]
-			_n = nn
-			continue
-		}
-
-		// create a new node
-		if len(suffix) == l {
+		// root
+		if n.prefix == "" {
 			nn := newNode(
 				[]HandleFunc{},
 				handler,
-				suffixSlash(suffix[:l]),
+				suffix,
 				now,
-				htype,
+				static,
 				method,
 				n,
 			)
 
-			if n.parent != nil {
-				pn := n.parent
-				ns := lcpMinChildren(pn.children, suffix[:l])
-				l := lcp(n.prefix, suffix)
+			n.children = append(n.children, nn)
+			fmt.Printf("inserted: %v, after: %v\n", nn, n)
+			break
+		}
 
-				if len(ns) != 0 && l != 0 {
-					for i := 0; i < len(ns); i++ {
-						ns[i].prefix = ns[i].prefix[l:]
-						ns[i].path = ns[i].path[:max(len(now)-l, 0)]
-						nn.parent = pn
-						nn.children = append(nn.children, ns[i])
-						pn.children = remove(pn.children, ns[i])
-						fmt.Printf("switched %v after %v\n", n, nn)
-					}
+		// update node
+		if l < len(suffix) {
+			children := lcpMinChildren(n.children, suffix[l:])
 
-					n = pn
-				}
+			// create intermediate node
+			in := newNode(
+				[]HandleFunc{},
+				nil,
+				suffix[l:],
+				now+n.prefix,
+				static,
+				method,
+				n,
+			)
+
+			for _, child := range children {
+				child.prefix = child.prefix[l:]
+				child.parent = in
+				n.children = remove(n.children, child)
 			}
 
-			fmt.Printf("now node: %v\n", n)
+			if len(children) != 0 {
+				n.children = append(n.children, in)
+				n = in
+			}
+		}
+
+		// create a new static node
+		if l == len(suffix) {
+			nn := newNode(
+				[]HandleFunc{},
+				handler,
+				suffix,
+				now,
+				static,
+				method,
+				n,
+			)
 			n.children = append(n.children, nn)
-			fmt.Printf("inserted %v after %v\n", nn, n)
+			fmt.Printf("inserted: %v, after: %v\n", nn, n)
 			break
 		}
 
 		suffix = suffix[l:]
+		now += n.prefix
 		_n = n
 	}
+}
 
-	// if path is perfect match
-	// n.handlers = append(n.handlers, handler)
-	// n.methods = append(n.methods, method)
+func switching(n, nn *node, now, suffix string, l int) {
+	pn := n.parent
+	ns := lcpMinChildren(pn.children, suffix[:l])
+	l = lcp(n.prefix, suffix)
+
+	if len(ns) != 0 {
+		for i := 0; i < len(ns); i++ {
+			ns[i].prefix = ns[i].prefix[l:]
+			ns[i].path = ns[i].path[l:]
+			ns[i].parent = nn
+			nn.parent = pn
+			nn.children = append(nn.children, ns[i])
+			pn.children = remove(pn.children, ns[i])
+			fmt.Printf("switched %v after %v\n", n, nn)
+		}
+
+		n = pn
+
+	}
 }
 
 func suf(suffix string, l int) string {
@@ -266,19 +204,18 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 		path = "/" + path
 	}
 
-	handler, n := staticRouting(n, path, method)
+	handler, _n := staticRouting(n, path, method)
 
 	if handler != nil {
-		fmt.Println(handler)
 		return handler, nil
 	}
 
-	n = backtrack(n)
+	fmt.Printf("returned: %v\n", _n)
+	_n = backtrack(_n)
+	fmt.Printf("backtracked: %v\n", _n)
 
-	handler, params := paramRouting(n, path, method)
+	handler, params := paramRouting(_n, path, method)
 
-	fmt.Println(handler)
-	fmt.Println(params)
 	/*
 		if handler != nil {
 			return handler, nil
@@ -292,6 +229,10 @@ func backtrack(n *node) *node {
 	var _n *node
 
 	for {
+		if _n != nil {
+			n = _n
+		}
+
 		if n.parent == nil {
 			return n
 		}
@@ -304,13 +245,13 @@ func backtrack(n *node) *node {
 
 		_n = n.parent
 	}
+
 	return _n
 }
 
 func staticRouting(n *node, path, method string) (HandleFunc, *node) {
 	suffix := path
 
-	prev := ""
 	now := ""
 
 	var _n *node
@@ -321,35 +262,45 @@ func staticRouting(n *node, path, method string) (HandleFunc, *node) {
 			n = _n
 		}
 
-		_n, l = lcpMinChild(n, suffix)
-
-		now += n.prefix
-		prefix := suffix[:l]
-		suffix = suffix[l:]
-
 		if now == path || now == path+"/" {
 			i := handleindex(n, method)
 			return n.handlers[i], nil
 		}
 
-		if prev == prefix {
-			return nil, n
+		l = len(path)
+
+		for i := 0; i < len(n.children); i++ {
+			if n.children[i].handleType != pathParam {
+				mn := lcp(n.children[i].prefix, suffix)
+				fmt.Printf("%s, %s: %d\n", n.children[i].prefix, suffix, mn)
+				if l >= mn && mn != 0 {
+					l = mn
+					_n = n.children[i]
+				}
+			}
 		}
 
-		prev = prefix
+		if _n == n {
+			return nil, _n
+		}
+
+		now += _n.prefix
+		suffix = suffix[l:]
 	}
-	return nil, n
+	return nil, _n
 }
 
 func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
 	l := lcp(n.path, path)
 	suffix := path[l:]
 	prev := ""
-	now := n.path
+	now := ""
 
 	if now != "/" {
 		now += "/"
 	}
+
+	now = n.path
 
 	var _n *node
 
@@ -370,15 +321,16 @@ func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
 			return nil, nil
 		}
 
-		fmt.Println(path)
-		fmt.Println(now)
-
-		if child != nil {
+		if n.handleType == pathParam {
 			i := 0
 			pp := ""
 
+			if len(suffix) == 0 {
+				continue
+			}
+
 			if suffix[0] == '/' {
-				i = 1
+				i += 1
 			}
 
 			for ; i < len(suffix); i++ {
@@ -389,14 +341,18 @@ func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
 			}
 
 			_n = child
-			child.param.value = pp
-			params = append(params, child.param)
+			if child.param != nil {
+				child.param.value = pp
+				params = append(params, child.param)
+			}
 
-			if len(now) == 0 {
+			if now != "/" {
 				now += "/"
 			}
-			now += pp + "/"
+
+			now += pp
 			suffix = suffix[i:]
+
 			if len(child.children) == 0 {
 				_n = child
 			}
@@ -404,7 +360,7 @@ func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
 		}
 
 		n, l = lcpMinChild(n, suffix)
-		now += n.prefix
+		now += n.path
 		prefix := suffix[:l]
 		suffix = suffix[l:]
 
@@ -412,8 +368,6 @@ func paramRouting(n *node, path, method string) (HandleFunc, []*param) {
 			return nil, nil
 		}
 
-		fmt.Println(prev)
-		fmt.Println(prefix)
 		prev = prefix
 		_n = n
 	}
