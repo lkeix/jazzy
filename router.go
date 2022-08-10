@@ -141,6 +141,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				n.children = append(n.children, nn)
 				suffix = suffix[sl:]
 				fmt.Printf("inserted: %v, after: %v\n", nn, n)
+				n = nn
 			}
 			nn := newNode(
 				[]HandleFunc{},
@@ -153,7 +154,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 			)
 
 			n.children = append(n.children, nn)
-			fmt.Printf("inserted: %v, after: %v\n", nn, n)
+			fmt.Printf("inserted123: %v, after: %v\n", nn, n)
 			break
 		}
 
@@ -245,12 +246,6 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 
 	handler, params := paramRouting(_n, path, method)
 
-	/*
-		if handler != nil {
-			return handler, nil
-		}
-	*/
-
 	return handler, params
 }
 
@@ -302,8 +297,8 @@ func staticRouting(n *node, path, method string) (HandleFunc, *node) {
 			if n.children[i].handleType != pathParam {
 				mx := lcp(n.children[i].prefix, suffix)
 				fmt.Printf("%s, %s: %d\n", n.children[i].prefix, suffix, mx)
-				if l >= mn && mn != 0 {
-					l = mn
+				if l >= mx && mx != 0 {
+					l = mx
 					_n = n.children[i]
 				}
 			}
