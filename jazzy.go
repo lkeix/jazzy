@@ -8,7 +8,7 @@ import (
 type (
 	HandleFunc func(*Context)
 
-	JazzyRepo interface {
+	JazzyInterface interface {
 		GET(string, HandleFunc)
 		POST(string, HandleFunc)
 		PUT(string, HandleFunc)
@@ -30,7 +30,7 @@ const (
 	notfound = "{ \"message\": \"not found\" }"
 )
 
-func New() JazzyRepo {
+func New() JazzyInterface {
 	pool := sync.Pool{
 		New: func() interface{} {
 			var w http.ResponseWriter
