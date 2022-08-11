@@ -73,6 +73,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 
 		now += suffix[:l]
 
+		// fmt.Println(now)
 		// root
 		if n.prefix == "" {
 			nn := newNode(
@@ -106,6 +107,8 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 			)
 
 			if len(children) != 0 {
+				now += suffix[l:]
+				in.path = now
 				fmt.Printf("intermediate node: %v\n", in)
 				n.children = append(n.children, in)
 			}
@@ -125,8 +128,29 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 			}
 		}
 
+		if suffix[0] == '/' && l == len(suffix) {
+			// create / node
+			nn := newNode(
+				[]HandleFunc{},
+				handler,
+				"/",
+				n.path+"/",
+				static,
+				method,
+				n,
+			)
+
+			n.children = append(n.children, nn)
+			fmt.Printf("inserted: %v, after: %v\n", nn, n)
+
+			suffix = suffix[1:]
+			_n = nn
+			continue
+		}
+
 		// create a new static node
 		if l == len(suffix) {
+			// insert intermediate node when '/' in mid-suffix
 			sl := slashindex(suffix)
 			if sl != 0 {
 				nn := newNode(
@@ -140,21 +164,23 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				)
 				n.children = append(n.children, nn)
 				suffix = suffix[sl:]
+				now += suffix[sl:]
 				fmt.Printf("inserted: %v, after: %v\n", nn, n)
 				n = nn
 			}
+
 			nn := newNode(
 				[]HandleFunc{},
 				handler,
 				suffix,
-				now,
+				n.path+suffix,
 				static,
 				method,
 				n,
 			)
 
 			n.children = append(n.children, nn)
-			fmt.Printf("inserted123: %v, after: %v\n", nn, n)
+			fmt.Printf("inserted: %v, after: %v\n", nn, n)
 			break
 		}
 
