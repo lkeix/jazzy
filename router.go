@@ -2,40 +2,42 @@ package jazzy
 
 import (
 	"bytes"
-	"strings"
 )
 
 const (
-	static = iota
+	static kind = iota
 	pathParam
 	none
 
 	colon = ':'
 )
 
+type kind int
+
 type (
 	param struct {
 		key   string
 		value string
 	}
-
-	node struct {
-		middlewares []HandleFunc
-		handler     HandleFunc
-		prefix      string
-		handleType  int
-		methods     []string
-		param       *param
-		path        string
-		parent      *node
-		children    []*node
-		leaf        bool
-	}
-
-	Router struct {
-		tree *node
-	}
 )
+
+type node struct {
+	middlewares  []HandleFunc
+	handler      HandleFunc
+	prefix       string
+	kind         kind
+	methods      map[string]HandleFunc
+	param        *param
+	path         string
+	originalPath string
+	parent       *node
+	children     []*node
+	leaf         bool
+}
+
+type Router struct {
+	tree *node
+}
 
 func NewRouter() *Router {
 	return &Router{
@@ -43,27 +45,68 @@ func NewRouter() *Router {
 			prefix:   "",
 			children: []*node{},
 			handler:  nil,
-			methods:  []string{},
+			methods:  make(map[string]HandleFunc),
 		},
 	}
 }
 
 func (r *Router) Insert(method, path string, handler HandleFunc) {
-	n := r.tree
+	originalPath := path
 
 	if path == "" {
 		path += "/"
 	}
 
 	if path == "/" {
-		n.handler = handler
+		r.tree.handler = handler
 		return
 	}
 
 	path = path[1:]
 
 	for i := 0; i < len(path); i++ {
+		if path[i] == ':' {
 
+		}
+		r.insert(method, path, originalPath, static, handler)
+	}
+}
+
+func (r *Router) insert(method, path, originalPath string, k kind, handler HandleFunc) {
+	n := r.tree
+	for {
+		max := len(n.prefix)
+		pathl := len(path)
+
+		if max < pathl {
+			max = pathl
+		}
+
+		lcpIndex := 0
+		for ; lcpIndex < max; lcpIndex++ {
+			if path[lcpIndex] != n.prefix[lcpIndex] {
+				break
+			}
+		}
+
+		if lcpIndex == 0 {
+			n.prefix = path
+			n.kind = k
+			n.originalPath = originalPath
+			n.methods[method] = handler
+			continue
+		}
+
+		if lcpIndex < pathl {
+			path = path[lcpIndex:]
+			// TODO: find node child
+
+			continue
+		}
+
+		n.methods[method] = handler
+		n.originalPath = originalPath
+		return
 	}
 }
 
@@ -98,7 +141,7 @@ func newNode(
 	handler HandleFunc,
 	prefix string,
 	path string,
-	handleType int,
+	k kind,
 	method string,
 	parent *node,
 ) *node {
@@ -107,8 +150,8 @@ func newNode(
 		handler:     handler,
 		prefix:      prefix,
 		path:        path,
-		handleType:  handleType,
-		methods:     []string{method},
+		kind:        k,
+		methods:     make(map[string]HandleFunc),
 		parent:      parent,
 	}
 }
@@ -116,15 +159,6 @@ func newNode(
 func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 	// search root
 	return nil, nil
-}
-
-func paramChild(n []*node) *node {
-	for i := 0; i < len(n); i++ {
-		if n[i].handleType == pathParam {
-			return n[i]
-		}
-	}
-	return nil
 }
 
 func paramName(path string) string {
@@ -179,14 +213,6 @@ func remove(ns []*node, n *node) []*node {
 	}
 	return ns
 }
-
-func handleType(path string) int {
-	if strings.Contains(path, string(colon)) {
-		return pathParam
-	}
-	return static
-}
-
 func lcp(x, y string) int {
 	for i := 0; i < min(len(x), len(y)); i++ {
 		if x[i] != y[i] {
@@ -194,15 +220,6 @@ func lcp(x, y string) int {
 		}
 	}
 	return min(len(x), len(y))
-}
-
-func handleindex(n *node, method string) int {
-	for i := 0; i < len(n.methods); i++ {
-		if n.methods[i] == method {
-			return i
-		}
-	}
-	return -1
 }
 
 func min[T ~int | ~int32 | ~int64 | ~float32 | ~float64](x, y T) T {
