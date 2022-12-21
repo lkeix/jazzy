@@ -2,6 +2,7 @@ package jazzy
 
 import (
 	"bytes"
+	"path"
 )
 
 const (
@@ -94,14 +95,42 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 			n.kind = k
 			n.originalPath = originalPath
 			n.methods[method] = handler
-			continue
 		}
 
 		if lcpIndex < pathl {
 			path = path[lcpIndex:]
-			// TODO: find node child
+			nn := newNode(
+				nil,
+				nil,
+				n.prefix[:lcpIndex],
+				originalPath,
+				k,
+				method,
+				n)
 
-			continue
+			for _, child := range n.children {
+				child.parent = nn
+			}
+
+			n.update(n.prefix[:lcpIndex], nn)
+			nn.children = append(nn.children, n)
+
+			if lcpIndex == len(path) {
+				nn.kind = k
+				if handler != nil {
+					nn.methods[method] = handler
+				}
+			} else {
+				nnn := newNode(
+					nil,
+					nil,
+					n.prefix[:lcpIndex],
+					"",
+					k,
+					method,
+					nn)
+				nn.children = append(nn.children, nnn)
+			}
 		}
 
 		n.methods[method] = handler
@@ -152,8 +181,20 @@ func newNode(
 		path:        path,
 		kind:        k,
 		methods:     make(map[string]HandleFunc),
+		children:    make([]*node, 0),
 		parent:      parent,
 	}
+}
+
+func (n *node) update(prefix string, parent *node) {
+	n.kind = static
+	n.prefix = prefix
+	n.originalPath = ""
+	n.methods = make(map[string]HandleFunc)
+	n.children = nil
+	n.handler = nil
+	n.middlewares = nil
+	n.parent = parent
 }
 
 func (r *Router) Search(method, path string) (HandleFunc, []*param) {
