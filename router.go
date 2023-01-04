@@ -2,7 +2,6 @@ package jazzy
 
 import (
 	"bytes"
-	"path"
 )
 
 const (
@@ -137,18 +136,6 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 		n.originalPath = originalPath
 		return
 	}
-}
-
-// slashindex
-// return first '/' index
-// @return slashindex
-func slashindex(suffix string) int {
-	for i := 0; i < len(suffix); i++ {
-		if suffix[i] == '/' {
-			return i
-		}
-	}
-	return 0
 }
 
 func suf(suffix string, l int) string {
