@@ -145,11 +145,9 @@ func suf(suffix string, l int) string {
 	return suffix[l:]
 }
 
-func suffixSlash(suffix string) string {
-	if suffix[len(suffix)-1] == '/' {
-		return suffix
-	}
-	return suffix + "/"
+func (r *Router) Search(method, path string) (HandleFunc, []*param) {
+	// search root
+	return nil, nil
 }
 
 func newNode(
@@ -183,12 +181,6 @@ func (n *node) update(prefix string, parent *node) {
 	n.middlewares = nil
 	n.parent = parent
 }
-
-func (r *Router) Search(method, path string) (HandleFunc, []*param) {
-	// search root
-	return nil, nil
-}
-
 func paramName(path string) string {
 	buf := bytes.NewBuffer(make([]byte, 0, len(path)))
 	if len(path) == 0 {
