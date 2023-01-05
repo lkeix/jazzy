@@ -147,6 +147,9 @@ func suf(suffix string, l int) string {
 
 func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 	// search root
+	if path == "/" {
+		return r.tree.methods[method], nil
+	}
 	return nil, nil
 }
 
