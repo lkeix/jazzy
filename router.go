@@ -2,6 +2,7 @@ package jazzy
 
 import (
 	"bytes"
+	"fmt"
 )
 
 const (
@@ -58,7 +59,8 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 	}
 
 	if path == "/" {
-		r.tree.handler = handler
+		r.tree.methods[method] = handler
+		// r.tree.handler = handler
 		return
 	}
 
@@ -132,20 +134,15 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 			}
 		}
 
+		fmt.Println("inserted")
 		n.methods[method] = handler
 		n.originalPath = originalPath
 		return
 	}
 }
 
-func suf(suffix string, l int) string {
-	if len(suffix) == 1 {
-		return suffix
-	}
-	return suffix[l:]
-}
-
 func (r *Router) Search(method, path string) (HandleFunc, []*param) {
+	fmt.Println(r.tree.children)
 	// search root
 	if path == "/" {
 		return r.tree.methods[method], nil

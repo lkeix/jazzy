@@ -31,7 +31,7 @@ func TestInsert(t *testing.T) {
 
 			f, _ := r.Search(tt.method, tt.path)
 
-			if !reflect.DeepEqual(f, tt.handler) {
+			if reflect.ValueOf(tt.handler).Pointer() != reflect.ValueOf(f).Pointer() {
 				t.Errorf("fail: handler isn't same\n\texpect: %v\n\tactual:%v\n", tt.handler, f)
 			}
 		})
