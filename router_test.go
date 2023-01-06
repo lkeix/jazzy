@@ -21,6 +21,14 @@ func TestInsert(t *testing.T) {
 
 			},
 		},
+		{
+			name:   "insert simple handler",
+			method: http.MethodGet,
+			path:   "/hoge",
+			handler: func(ctx *Context) {
+
+			},
+		},
 	}
 
 	r := NewRouter()

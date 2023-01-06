@@ -36,6 +36,25 @@ type node struct {
 	leaf         bool
 }
 
+func (n *node) findMaxLengthChild(path string, k kind) *node {
+	var maxLengthNode *node
+	maxLength := 0
+	for _, child := range n.children {
+		max := len(child.prefix)
+		if max > len(path) {
+			max = len(path)
+		}
+		lcp := 0
+		for ; lcp < max && child.prefix[lcp] == path[lcp]; lcp++ {
+		}
+		if maxLength < lcp {
+			maxLength = lcp
+			maxLengthNode = child
+		}
+	}
+	return maxLengthNode
+}
+
 type Router struct {
 	tree *node
 }
@@ -142,11 +161,30 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 }
 
 func (r *Router) Search(method, path string) (HandleFunc, []*param) {
-	fmt.Println(r.tree.children)
 	// search root
 	if path == "/" {
 		return r.tree.methods[method], nil
 	}
+
+	current := r.tree
+	target := path
+
+	min := len(target)
+
+	params := make([]*param, 0)
+	for {
+		if min > len(r.tree.prefix) {
+			min = len(r.tree.prefix)
+		}
+
+		next := current.findMaxLengthChild(target, static)
+		target = target[len(next.prefix):]
+
+		if target == "" {
+			return next.methods[method], params
+		}
+	}
+
 	return nil, nil
 }
 
@@ -197,61 +235,4 @@ func paramName(path string) string {
 		}
 	}
 	return ""
-}
-
-func lcpMinChild(n *node, suffix string) (*node, int) {
-	mn := len(suffix)
-	next := n
-
-	for i := 0; i < len(n.children); i++ {
-		l := lcp(n.children[i].prefix, suffix)
-		if l <= mn && l != 0 {
-			mn = l
-			next = n.children[i]
-		}
-	}
-	return next, mn
-}
-
-func lcpMinChildren(ns []*node, suffix string) []*node {
-	rns := make([]*node, 0, len(ns))
-	l := len(suffix)
-	for i := 0; i < len(ns); i++ {
-		mnl := min(l, len(ns[i].prefix))
-		if ns[i].prefix[:mnl] == suffix {
-			rns = append(rns, ns[i])
-		}
-	}
-	return rns
-}
-
-func remove(ns []*node, n *node) []*node {
-	for i := 0; i < len(ns); i++ {
-		if ns[i] == n {
-			return append(ns[:i], ns[i+1:]...)
-		}
-	}
-	return ns
-}
-func lcp(x, y string) int {
-	for i := 0; i < min(len(x), len(y)); i++ {
-		if x[i] != y[i] {
-			return i
-		}
-	}
-	return min(len(x), len(y))
-}
-
-func min[T ~int | ~int32 | ~int64 | ~float32 | ~float64](x, y T) T {
-	if x < y {
-		return x
-	}
-	return y
-}
-
-func max[T int | int32 | int64 | float32 | float64](x, y T) T {
-	if x > y {
-		return x
-	}
-	return y
 }
