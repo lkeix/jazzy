@@ -2,7 +2,6 @@ package jazzy
 
 import (
 	"bytes"
-	"fmt"
 )
 
 const (
@@ -39,10 +38,12 @@ type node struct {
 func (n *node) findMaxLengthChild(path string, k kind) *node {
 	var maxLengthNode *node
 	maxLength := 0
+
+	pathl := len(path)
 	for _, child := range n.children {
 		max := len(child.prefix)
-		if max > len(path) {
-			max = len(path)
+		if max > pathl {
+			max = pathl
 		}
 		lcp := 0
 		for ; lcp < max && child.prefix[lcp] == path[lcp]; lcp++ {
@@ -79,17 +80,16 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 
 	if path == "/" {
 		r.tree.methods[method] = handler
+		r.tree.prefix = "/"
 		// r.tree.handler = handler
 		return
 	}
 
-	path = path[1:]
-
+	r.insert(method, path, originalPath, static, handler)
 	for i := 0; i < len(path); i++ {
 		if path[i] == ':' {
 
 		}
-		r.insert(method, path, originalPath, static, handler)
 	}
 }
 
@@ -99,7 +99,7 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 		max := len(n.prefix)
 		pathl := len(path)
 
-		if max < pathl {
+		if max > pathl {
 			max = pathl
 		}
 
@@ -119,6 +119,7 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 
 		if lcpIndex < pathl {
 			path = path[lcpIndex:]
+
 			nn := newNode(
 				nil,
 				nil,
@@ -128,35 +129,13 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 				method,
 				n)
 
-			for _, child := range n.children {
-				child.parent = nn
-			}
-
-			n.update(n.prefix[:lcpIndex], nn)
-			nn.children = append(nn.children, n)
-
-			if lcpIndex == len(path) {
-				nn.kind = k
-				if handler != nil {
-					nn.methods[method] = handler
-				}
-			} else {
-				nnn := newNode(
-					nil,
-					nil,
-					n.prefix[:lcpIndex],
-					"",
-					k,
-					method,
-					nn)
-				nn.children = append(nn.children, nnn)
+			if len(n.children) == 0 {
+				nn.prefix = path
+				nn.methods[method] = handler
+				n.children = append(n.children, nn)
+				return
 			}
 		}
-
-		fmt.Println("inserted")
-		n.methods[method] = handler
-		n.originalPath = originalPath
-		return
 	}
 }
 
@@ -167,14 +146,14 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 	}
 
 	current := r.tree
-	target := path
+	target := path[1:]
 
 	min := len(target)
 
 	params := make([]*param, 0)
 	for {
-		if min > len(r.tree.prefix) {
-			min = len(r.tree.prefix)
+		if min > len(current.prefix) {
+			min = len(current.prefix)
 		}
 
 		next := current.findMaxLengthChild(target, static)
