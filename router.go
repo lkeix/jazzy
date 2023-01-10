@@ -135,6 +135,8 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 				n.children = append(n.children, nn)
 				return
 			}
+
+			n = n.findMaxLengthChild(path, static)
 		}
 	}
 }
@@ -162,6 +164,8 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 		if target == "" {
 			return next.methods[method], params
 		}
+
+		current = next
 	}
 
 	return nil, nil

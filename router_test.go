@@ -29,6 +29,14 @@ func TestInsert(t *testing.T) {
 
 			},
 		},
+		{
+			name:   "insert 2nested simple handler",
+			method: http.MethodGet,
+			path:   "/hoge/fuga",
+			handler: func(ctx *Context) {
+
+			},
+		},
 	}
 
 	r := NewRouter()
