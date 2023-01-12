@@ -30,6 +30,14 @@ func TestInsert(t *testing.T) {
 			},
 		},
 		{
+			name:   "insert partial match handler",
+			method: http.MethodGet,
+			path:   "/hog/fuga",
+			handler: func(ctx *Context) {
+
+			},
+		},
+		{
 			name:   "insert 2nested simple handler",
 			method: http.MethodGet,
 			path:   "/hoge/fuga",

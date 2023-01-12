@@ -2,6 +2,7 @@ package jazzy
 
 import (
 	"bytes"
+	"fmt"
 )
 
 const (
@@ -53,6 +54,7 @@ func (n *node) findMaxLengthChild(path string, k kind) *node {
 			maxLengthNode = child
 		}
 	}
+
 	return maxLengthNode
 }
 
@@ -129,12 +131,20 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 				method,
 				n)
 
+			nn.parent = n.parent
+			n.parent = nn
+
 			if len(n.children) == 0 {
 				nn.prefix = path
 				nn.methods[method] = handler
 				n.children = append(n.children, nn)
 				return
 			}
+
+			// TODO: update
+			n.prefix = n.prefix[lcpIndex:]
+			nn.parent = n.parent
+			n.parent = nn
 
 			n = n.findMaxLengthChild(path, static)
 		}
