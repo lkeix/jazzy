@@ -36,6 +36,10 @@ type node struct {
 	leaf         bool
 }
 
+func (n *node) addChild(child *node) {
+	n.children = append(n.children, child)
+}
+
 func (n *node) findMaxLengthChild(path string, k kind) *node {
 	var maxLengthNode *node
 	maxLength := 0
@@ -73,11 +77,19 @@ func NewRouter() *Router {
 	}
 }
 
-func (r *Router) Insert(method, path string, handler HandleFunc) {
-	originalPath := path
+type route struct {
+	originalPath string
+	paramNames   []string
+	handler      HandleFunc
+}
 
+func (r *Router) Insert(method, path string, handler HandleFunc) {
 	if path == "" {
 		path += "/"
+	}
+
+	if path[0] == '/' {
+		path = "/" + path
 	}
 
 	if path == "/" {
@@ -87,26 +99,27 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 		return
 	}
 
-	r.insert(method, path, originalPath, static, handler)
-	for i := 0; i < len(path); i++ {
-		if path[i] == ':' {
-
-		}
-	}
+	originalPath := path
+	r.insert(method, path, static, &route{
+		originalPath: originalPath,
+		paramNames:   []string{},
+		handler:      handler,
+	})
 }
 
-func (r *Router) insert(method, path, originalPath string, k kind, handler HandleFunc) {
+func (r *Router) insert(method, path string, k kind, route *route) {
 	n := r.tree
 	for {
-		max := len(n.prefix)
-		pathl := len(path)
+		pathLength := len(path)
+		prefixLen := len(n.prefix)
 
-		if max > pathl {
-			max = pathl
+		commonLengthMin := prefixLen
+		if commonLengthMin > pathLength {
+			commonLengthMin = pathLength
 		}
 
 		lcpIndex := 0
-		for ; lcpIndex < max; lcpIndex++ {
+		for ; lcpIndex < commonLengthMin; lcpIndex++ {
 			if path[lcpIndex] != n.prefix[lcpIndex] {
 				break
 			}
@@ -115,39 +128,46 @@ func (r *Router) insert(method, path, originalPath string, k kind, handler Handl
 		if lcpIndex == 0 {
 			n.prefix = path
 			n.kind = k
-			n.originalPath = originalPath
-			n.methods[method] = handler
+			n.originalPath = route.originalPath
+			n.methods[method] = route.handler
 		}
 
-		if lcpIndex < pathl {
-			path = path[lcpIndex:]
-
+		if lcpIndex < len(n.prefix) {
 			nn := newNode(
 				nil,
 				nil,
-				n.prefix[:lcpIndex],
-				originalPath,
+				path,
+				n.originalPath,
 				k,
 				method,
 				n)
 
-			nn.parent = n.parent
-			n.parent = nn
-
-			if len(n.children) == 0 {
-				nn.prefix = path
-				nn.methods[method] = handler
-				n.children = append(n.children, nn)
-				return
+			for _, child := range n.children {
+				child.parent = nn
 			}
 
-			// TODO: update
-			n.prefix = n.prefix[lcpIndex:]
-			nn.parent = n.parent
-			n.parent = nn
+			n.kind = static
+			n.prefix = n.prefix[:lcpIndex]
+			n.originalPath = ""
+			n.methods[method] = route.handler
+		} else if lcpIndex < pathLength {
+			path = path[lcpIndex:]
+			next := n.findMaxLengthChild(path, static)
+			if next != nil {
+				fmt.Println(n)
+				n = next
+				continue
+			}
 
-			n = n.findMaxLengthChild(path, static)
+			nn := newNode(nil, nil, path, route.originalPath, static, method, n)
+			n.addChild(nn)
+		} else {
+			if route.handler != nil {
+				n.methods[method] = route.handler
+				n.originalPath = route.originalPath
+			}
 		}
+		return
 	}
 }
 
@@ -157,6 +177,9 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 		return r.tree.methods[method], nil
 	}
 
+	fmt.Println(r.tree)
+	fmt.Println(r.tree.children[0])
+	fmt.Println(r.tree.children[1])
 	current := r.tree
 	target := path[1:]
 
