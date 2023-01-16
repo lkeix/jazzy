@@ -2,7 +2,6 @@ package jazzy
 
 import (
 	"bytes"
-	"fmt"
 )
 
 const (
@@ -88,7 +87,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 		path += "/"
 	}
 
-	if path[0] == '/' {
+	if path[0] != '/' {
 		path = "/" + path
 	}
 
@@ -132,7 +131,7 @@ func (r *Router) insert(method, path string, k kind, route *route) {
 			n.methods[method] = route.handler
 		}
 
-		if lcpIndex < len(n.prefix) {
+		if lcpIndex < prefixLen {
 			nn := newNode(
 				nil,
 				nil,
@@ -149,17 +148,34 @@ func (r *Router) insert(method, path string, k kind, route *route) {
 			n.kind = static
 			n.prefix = n.prefix[:lcpIndex]
 			n.originalPath = ""
-			n.methods[method] = route.handler
+			n.methods[method] = nil
+
+			n.addChild(nn)
+			if lcpIndex == pathLength {
+				if route.handler != nil {
+					n.methods[method] = route.handler
+					n.originalPath = route.originalPath
+				}
+			} else {
+				nn := newNode(nil, nil, path[lcpIndex:], route.originalPath, static, method, n)
+				if route.handler != nil {
+					nn.methods[method] = route.handler
+					nn.originalPath = route.originalPath
+				}
+				n.addChild(nn)
+			}
 		} else if lcpIndex < pathLength {
 			path = path[lcpIndex:]
 			next := n.findMaxLengthChild(path, static)
 			if next != nil {
-				fmt.Println(n)
 				n = next
 				continue
 			}
 
 			nn := newNode(nil, nil, path, route.originalPath, static, method, n)
+			if route.handler != nil {
+				nn.methods[method] = route.handler
+			}
 			n.addChild(nn)
 		} else {
 			if route.handler != nil {
@@ -177,28 +193,44 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 		return r.tree.methods[method], nil
 	}
 
-	fmt.Println(r.tree)
-	fmt.Println(r.tree.children[0])
-	fmt.Println(r.tree.children[1])
 	current := r.tree
-	target := path[1:]
+	searchIndex := 0
 
-	min := len(target)
-
-	params := make([]*param, 0)
 	for {
-		if min > len(current.prefix) {
-			min = len(current.prefix)
+		prefixLength := 0
+
+		pathLength := len(path)
+		prefixLength = len(current.prefix)
+
+		minCommonLength := prefixLength
+		if pathLength < minCommonLength {
+			minCommonLength = pathLength
 		}
 
-		next := current.findMaxLengthChild(target, static)
-		target = target[len(next.prefix):]
-
-		if target == "" {
-			return next.methods[method], params
+		lcpIndex := 0
+		for ; lcpIndex < minCommonLength; lcpIndex++ {
+			if path[lcpIndex] != current.prefix[lcpIndex] {
+				break
+			}
 		}
 
-		current = next
+		path = path[lcpIndex:]
+		searchIndex = searchIndex + lcpIndex
+
+		if path == "" {
+			if h, ok := current.methods[method]; ok {
+				return h, nil
+			}
+
+			return nil, nil
+		}
+
+		if path != "" {
+			if child := current.findMaxLengthChild(path, static); child != nil {
+				current = child
+				continue
+			}
+		}
 	}
 
 	return nil, nil
