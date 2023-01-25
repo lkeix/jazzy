@@ -82,6 +82,7 @@ type route struct {
 	handler      HandleFunc
 }
 
+// reference: https://github.com/labstack/echo/blob/master/router.go
 func (r *Router) Insert(method, path string, handler HandleFunc) {
 	if path == "" {
 		path += "/"
