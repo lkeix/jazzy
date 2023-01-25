@@ -99,6 +99,36 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 	}
 
 	originalPath := path
+
+	lcpIndex := len(path)
+	for i := 0; i < lcpIndex; i++ {
+		if path[i] == ':' {
+			if i > 0 && path[i-1] == '\\' {
+				path = path[:i-1] + path[i:]
+				i--
+				lcpIndex--
+			}
+			j := i + 1
+			r.insert(method, path[:i], static, &route{})
+
+			for ; i < lcpIndex && path[i] != '/'; i++ {
+			}
+
+			path = path[:j] + path[i:]
+			i = j
+			lcpIndex = len(path)
+
+			if i == lcpIndex {
+				r.insert(method, path[:i], pathParam, &route{
+					handler:      handler,
+					originalPath: originalPath,
+				})
+			} else {
+				r.insert(method, path[:i], pathParam, &route{})
+			}
+		}
+	}
+
 	r.insert(method, path, static, &route{
 		originalPath: originalPath,
 		paramNames:   []string{},
