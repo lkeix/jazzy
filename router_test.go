@@ -14,7 +14,7 @@ func TestInsert(t *testing.T) {
 		handler HandleFunc
 	}{
 		{
-			name:   "insert simple handler",
+			name:   "insert root handler",
 			method: http.MethodGet,
 			path:   "/",
 			handler: func(ctx *Context) {
@@ -47,9 +47,9 @@ func TestInsert(t *testing.T) {
 		},
 	}
 
+	r := NewRouter()
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			r := NewRouter()
 			r.Insert(tt.method, tt.path, tt.handler)
 
 			f, _ := r.Search(tt.method, tt.path)
