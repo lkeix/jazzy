@@ -262,6 +262,16 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 				continue
 			}
 		}
+
+		if child := current.findMaxLengthChild(path, pathParam); child != nil {
+			current := child
+			i := 0
+			for ; i < len(path); i++ {
+			}
+		}
+		param := path[:i]
+		path = path[:i]
+		continue
 	}
 
 	return nil, nil
