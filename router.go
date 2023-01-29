@@ -2,6 +2,7 @@ package jazzy
 
 import (
 	"bytes"
+	"fmt"
 )
 
 const (
@@ -166,12 +167,13 @@ func (r *Router) insert(method, path string, k kind, route *route) {
 			nn := newNode(
 				nil,
 				nil,
-				path,
+				n.prefix[lcpIndex:],
 				n.originalPath,
 				k,
 				method,
 				n)
 
+			nn.methods = n.methods
 			for _, child := range n.children {
 				child.parent = nn
 			}
@@ -179,7 +181,7 @@ func (r *Router) insert(method, path string, k kind, route *route) {
 			n.kind = static
 			n.prefix = n.prefix[:lcpIndex]
 			n.originalPath = ""
-			n.methods[method] = nil
+			// n.methods[method] = nil
 
 			n.addChild(nn)
 			if lcpIndex == pathLength {
@@ -264,14 +266,14 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 		}
 
 		if child := current.findMaxLengthChild(path, pathParam); child != nil {
-			current := child
 			i := 0
-			for ; i < len(path); i++ {
+			for ; i < len(path) && path[i] != '/'; i++ {
 			}
+			param := path[:i]
+			path = path[i:]
+			fmt.Println(param)
+			continue
 		}
-		param := path[:i]
-		path = path[:i]
-		continue
 	}
 
 	return nil, nil
