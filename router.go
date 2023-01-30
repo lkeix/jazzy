@@ -247,6 +247,10 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 			}
 		}
 
+		if lcpIndex != prefixLength {
+			// backtrack
+		}
+
 		path = path[lcpIndex:]
 		searchIndex = searchIndex + lcpIndex
 
