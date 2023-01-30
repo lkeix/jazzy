@@ -3,6 +3,8 @@ package jazzy
 import (
 	"bytes"
 	"fmt"
+
+	"google.golang.org/appengine/search"
 )
 
 const (
@@ -218,6 +220,18 @@ func (r *Router) insert(method, path string, k kind, route *route) {
 		}
 		return
 	}
+}
+
+func backtrack(originalPath string, nowIndex int, current *node) (string, *node) {
+	previous := current
+	current = previous.parent
+
+	if previous.kind == static {
+		nowIndex -= len(previous.prefix)
+	}
+
+	search := originalPath[nowIndex:]
+	return search, previous
 }
 
 func (r *Router) Search(method, path string) (HandleFunc, []*param) {
