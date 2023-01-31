@@ -3,8 +3,6 @@ package jazzy
 import (
 	"bytes"
 	"fmt"
-
-	"google.golang.org/appengine/search"
 )
 
 const (
@@ -242,6 +240,7 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 
 	current := r.tree
 	searchIndex := 0
+	originalPath := path
 
 	for {
 		prefixLength := 0
@@ -262,7 +261,7 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 		}
 
 		if lcpIndex != prefixLength {
-			// backtrack
+			path, current = backtrack(originalPath, searchIndex, current)
 		}
 
 		path = path[lcpIndex:]
