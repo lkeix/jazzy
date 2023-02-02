@@ -50,17 +50,15 @@ func TestInsert(t *testing.T) {
 
 			},
 		},
-		/*
-			{
-				name:       "insert path param handler",
-				method:     http.MethodGet,
-				path:       "/:hoge",
-				searchPath: "/aaaa",
-				handler: func(ctx *Context) {
+		{
+			name:       "insert path param handler",
+			method:     http.MethodGet,
+			path:       "/:hoge",
+			searchPath: "/aaaa",
+			handler: func(ctx *Context) {
 
-				},
 			},
-		*/
+		},
 	}
 
 	r := NewRouter()
