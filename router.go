@@ -3,6 +3,7 @@ package jazzy
 import (
 	"bytes"
 	"fmt"
+	"time"
 )
 
 const (
@@ -111,7 +112,7 @@ func (r *Router) Insert(method, path string, handler HandleFunc) {
 				lcpIndex--
 			}
 			j := i + 1
-			r.insert(method, path[:i], static, &route{})
+			// r.insert(method, path[:i], static, &route{})
 
 			for ; i < lcpIndex && path[i] != '/'; i++ {
 			}
@@ -185,12 +186,13 @@ func (r *Router) insert(method, path string, k kind, route *route) {
 
 			n.addChild(nn)
 			if lcpIndex == pathLength {
+				n.kind = k
 				if route.handler != nil {
 					n.methods[method] = route.handler
 					n.originalPath = route.originalPath
 				}
 			} else {
-				nn := newNode(nil, nil, path[lcpIndex:], route.originalPath, static, method, n)
+				nn := newNode(nil, nil, path[lcpIndex:], route.originalPath, k, method, n)
 				if route.handler != nil {
 					nn.methods[method] = route.handler
 					nn.originalPath = route.originalPath
@@ -205,7 +207,7 @@ func (r *Router) insert(method, path string, k kind, route *route) {
 				continue
 			}
 
-			nn := newNode(nil, nil, path, route.originalPath, static, method, n)
+			nn := newNode(nil, nil, path, route.originalPath, k, method, n)
 			if route.handler != nil {
 				nn.methods[method] = route.handler
 			}
@@ -241,7 +243,7 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 	current := r.tree
 	searchIndex := 0
 	originalPath := path
-
+	nextKind := static
 	for {
 		prefixLength := 0
 
@@ -262,6 +264,8 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 
 		if lcpIndex != prefixLength {
 			path, current = backtrack(originalPath, searchIndex, current)
+			nextKind = pathParam
+			time.Sleep(1 * time.Second)
 		}
 
 		path = path[lcpIndex:]
@@ -275,7 +279,7 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 			return nil, nil
 		}
 
-		if path != "" {
+		if path != "" && nextKind == static {
 			if child := current.findMaxLengthChild(path, static); child != nil {
 				current = child
 				continue
