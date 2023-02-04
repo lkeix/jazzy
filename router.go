@@ -3,7 +3,6 @@ package jazzy
 import (
 	"bytes"
 	"fmt"
-	"time"
 )
 
 const (
@@ -47,6 +46,10 @@ func (n *node) findMaxLengthChild(path string, k kind) *node {
 
 	pathl := len(path)
 	for _, child := range n.children {
+		if k != static && child.kind == k {
+			return child
+		}
+
 		max := len(child.prefix)
 		if max > pathl {
 			max = pathl
@@ -211,6 +214,7 @@ func (r *Router) insert(method, path string, k kind, route *route) {
 			if route.handler != nil {
 				nn.methods[method] = route.handler
 			}
+			fmt.Println(route.handler)
 			n.addChild(nn)
 		} else {
 			if route.handler != nil {
@@ -265,7 +269,6 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 		if lcpIndex != prefixLength {
 			path, current = backtrack(originalPath, searchIndex, current)
 			nextKind = pathParam
-			time.Sleep(1 * time.Second)
 		}
 
 		path = path[lcpIndex:]
@@ -293,6 +296,9 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 			param := path[:i]
 			path = path[i:]
 			fmt.Println(param)
+			if current.methods[method] != nil {
+				return current.methods[method], nil
+			}
 			continue
 		}
 	}
