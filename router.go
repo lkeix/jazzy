@@ -296,8 +296,8 @@ func (r *Router) Search(method, path string) (HandleFunc, []*param) {
 			param := path[:i]
 			path = path[i:]
 			fmt.Println(param)
-			if current.methods[method] != nil {
-				return current.methods[method], nil
+			if child.methods[method] != nil {
+				return child.methods[method], nil
 			}
 			continue
 		}
