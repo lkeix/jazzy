@@ -1,6 +1,7 @@
 package jazzy
 
 import (
+	"fmt"
 	"net/http"
 	"reflect"
 	"testing"
@@ -59,6 +60,16 @@ func TestInsert(t *testing.T) {
 
 			},
 		},
+    {
+
+			name:       "insert 2nested path param handler",
+			method:     http.MethodGet,
+			path:       "/:hoge/hoge",
+			searchPath: "/aaaa/hoge",
+			handler: func(ctx *Context) {
+
+			},
+    }
 	}
 
 	r := NewRouter()
